@@ -5,6 +5,7 @@
     <title>Title</title>
     <link rel="stylesheet" href="style.css">
     <script src="index.js"></script>
+    <script src="items.js"></script>
 </head>
 <body>
 <div id="sidebar-left" class="panel">
@@ -15,24 +16,20 @@
 </div>
 <div id="main-content" class="panel">
     <div class="item-col"></div>
-    <div class="item-col">
-        <div class="item">
-            <div class="item-name rarity-fiery-red">Bloodstained Glove</div>
-            <div class="item-icon">
-                <div class="item-icon-internal" style="background-image: url('https://calamitymod.wiki.gg/images/Bloodstained_Glove.png')"></div>
-            </div>
-            <div class="item-description">Stealth strikes have +8 armor penetration and heal for 5 HP</div>
-        </div>
-    </div>
+    <div class="item-col"></div>
     <div class="item-col"></div>
 </div>
 <div id="sidebar-right" class="panel">
+    <label>
+        <input id="search" class="search" placeholder="Search...">
+    </label>
     <h1 class="section-label">Class</h1>
     <div id="filter-class" class="filter-options"></div>
     <h1 class="section-label">Filter</h1>
     <div id="filter-filter" class="filter-options"></div>
     <h1 class="section-label">Item Type</h1>
     <div id="filter-type" class="filter-options"></div>
+    <div id="editing-container"></div>
 </div>
 </body>
 </html>
