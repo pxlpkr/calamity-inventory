@@ -13,7 +13,7 @@ let selectedItemTypes = [];
 let searchContent = "";
 
 let DEBUG_ONLY_NEW = false;
-let DEBUG = true;
+let DEBUG = false;
 let EDITING = false;
 let editTarget;
 
