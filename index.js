@@ -219,18 +219,18 @@ function renderItems() {
             }
         }
         // if (getBossTier(item["bosses"][0]) === getBossTier(furthestBoss)) {
-        // if (item["bosses"].includes(lastSelectedBoss) ||
-        //     item["bosses"].includes("Any Boss") && selectedBosses.length === 1 ||
-        //     item["bosses"].includes("Evil Boss 1") && getBossTier(lastSelectedBoss) === 1 ||
-        //     item["bosses"].includes("Evil Boss 2") && getBossTier(lastSelectedBoss) === 2 ||
-        //     item["bosses"].includes("Mech 1") && mechCount === 1 && ["The Twins", "The Destroyer", "Skeletron Prime"].includes(lastSelectedBoss) ||
-        //     item["bosses"].includes("Mech 2") && mechCount === 2 && ["The Twins", "The Destroyer", "Skeletron Prime"].includes(lastSelectedBoss) ||
-        //     item["bosses"].includes("Mech 3") && mechCount === 3 && ["The Twins", "The Destroyer", "Skeletron Prime"].includes(lastSelectedBoss)) {
-        //     let newPing = document.createElement("div");
-        //     newPing.classList.add("new-indicator");
-        //     newPing.textContent = "New!";
-        //     element.appendChild(newPing);
-        // }
+        if (item["bosses"].includes(lastSelectedBoss) ||
+            item["bosses"].includes("Any Boss") && selectedBosses.length === 1 ||
+            item["bosses"].includes("Evil Boss 1") && getBossTier(lastSelectedBoss) === 1 ||
+            item["bosses"].includes("Evil Boss 2") && getBossTier(lastSelectedBoss) === 2 ||
+            item["bosses"].includes("Mech 1") && mechCount === 1 && ["The Twins", "The Destroyer", "Skeletron Prime"].includes(lastSelectedBoss) ||
+            item["bosses"].includes("Mech 2") && mechCount === 2 && ["The Twins", "The Destroyer", "Skeletron Prime"].includes(lastSelectedBoss) ||
+            item["bosses"].includes("Mech 3") && mechCount === 3 && ["The Twins", "The Destroyer", "Skeletron Prime"].includes(lastSelectedBoss)) {
+            let newPing = document.createElement("div");
+            newPing.classList.add("new-indicator");
+            newPing.textContent = "New!";
+            element.appendChild(newPing);
+        }
         element.appendChild(desc);
         redirectWrapper.appendChild(element);
         destination.appendChild(redirectWrapper);
