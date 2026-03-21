@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 import time
 
 # --- CONFIGURATION ---
-WIKI_DOMAIN = "calamitymod.wiki.gg"  # e.g., "terraria.wiki.gg"
+WIKI_DOMAIN = "terraria.wiki.gg"  # e.g., "terraria.wiki.gg"
 CATEGORY_NAME = "Accessory_items"           # The category to crawl
 # ---------------------
 
@@ -45,8 +45,8 @@ def get_rarity_string(rarity):
 
 def get_category_members(category):
     """Fetches all page titles in a specific category using the API."""
-    pages = []
-    params = {
+    all_titles = []
+    list_params = {
         "action": "query",
         "list": "categorymembers",
         "cmtitle": f"Category:{category}",
@@ -54,9 +54,40 @@ def get_category_members(category):
         "format": "json"
     }
 
-    response = SESSION.get(BASE_URL, params=params).json()
-    members = response.get("query", {}).get("categorymembers", [])
-    return [m["title"] for m in members]
+    print(f"Fetching titles from Category:{category}...")
+    res = SESSION.get(BASE_URL, params=list_params).json()
+    members = res.get("query", {}).get("categorymembers", [])
+    all_titles = [m["title"] for m in members]
+
+    if not all_titles:
+        print("No items found in category. Check the name/capitalization!")
+        return []
+
+    # 2. Filter out redirects in batches (API allows 50 titles at once)
+    final_pages = []
+    # Break titles into chunks of 50
+    for i in range(0, len(all_titles), 50):
+        chunk = all_titles[i:i + 50]
+
+        info_params = {
+            "action": "query",
+            "titles": "|".join(chunk), # Pipe-separated list
+            "prop": "info",
+            "format": "json"
+        }
+
+        info_res = SESSION.get(BASE_URL, params=info_params).json()
+        pages_data = info_res.get("query", {}).get("pages", {})
+
+        for page_id, page_info in pages_data.items():
+            # Skip if it's a redirect or if the page is 'missing'
+            if "redirect" not in page_info and int(page_id) > 0:
+                final_pages.append(page_info["title"])
+            else:
+                reason = "Redirect" if "redirect" in page_info else "Missing"
+                print(f"Skipping {page_info.get('title', 'Unknown')}: {reason}")
+
+    return final_pages
 
 def extract_tooltip_text(td_element):
     """Replaces <br> tags with '. ' and cleans up the text."""
@@ -92,7 +123,7 @@ def get_info_via_api(page_title):
         if response.status_code == 200:
             data = response.json()
             if "parse" not in data:
-                return "Page content not found"
+                return "null", "null"
 
             # The HTML is tucked inside ['parse']['text']['*']
             raw_html = data["parse"]["text"]["*"]
@@ -101,7 +132,7 @@ def get_info_via_api(page_title):
             # Look for the 'stat' table you mentioned
             table = soup.find("table", class_="stat")
             if not table:
-                return "Table 'stat' not found"
+                return "null", "null"
 
             # Search rows for 'Tooltip'
             out_tooltip = "null"
@@ -138,16 +169,16 @@ def get_info_via_api(page_title):
             print(f"Rate limited on '{page_title}'. Waiting {wait_time}s...")
             time.sleep(wait_time)
         else:
-            return f"Error: {response.status_code}"
+            return f"Error: {response.status_code}", "null"
 
-    return "Failed after multiple retries"
+    return "Failed after multiple retries", "null"
 
 # --- EXECUTION ---
 titles = get_category_members(CATEGORY_NAME)
 print(f"Found {len(titles)} items. Starting extraction...")
 
 results = []
-limit = -13
+limit = -1
 try:
     for title in titles:
         if "Category:" in title:
@@ -159,22 +190,22 @@ try:
         result = {}
         result["name"] = title
         result["description"], result["rarity"] = get_info_via_api(title)
-        result["rarity"] = get_rarity_string(result["rarity"].replace("Rarity Level: ", ""))
+        result["rarity"] = result["rarity"].replace(" (Rarity level: 4)", "")
         result["difficulty"] = "Normal"
         result["bosses"] = []
         result["filters"] = []
         result["class"] = "Classless"
         result["type"] = "Accessory"
-        result["format"] = "calamitymod"
+        result["format"] = "terraria"
         results.append(result)
         time.sleep(1)  # A polite 1-second gap
-        if limit == 20000:
+        if limit == 4:
             break
 except Exception as e:
     print(f"Error: {e}")
 
 # Final Summary
-with open("../raw/calamity_accessories.json", "w+") as f:
+with open("../raw/terraria_accessories.json", "w+") as f:
     f.write(json.dumps(results))
 # print("\n" + "="*30)
 # for item in results:

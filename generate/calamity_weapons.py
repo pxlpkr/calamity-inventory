@@ -6,7 +6,7 @@ import time
 
 # --- CONFIGURATION ---
 WIKI_DOMAIN = "calamitymod.wiki.gg"  # e.g., "terraria.wiki.gg"
-CATEGORY_NAME = "Accessory_items"           # The category to crawl
+CATEGORY_NAME = "Rogue_weapons"           # The category to crawl
 # ---------------------
 
 BASE_URL = f"https://{WIKI_DOMAIN}/api.php"
@@ -92,36 +92,27 @@ def get_info_via_api(page_title):
         if response.status_code == 200:
             data = response.json()
             if "parse" not in data:
-                return "Page content not found"
+                return ["Page content not found"], "null"
 
             # The HTML is tucked inside ['parse']['text']['*']
             raw_html = data["parse"]["text"]["*"]
-            soup = BeautifulSoup(raw_html, 'lxml') # Use 'lxml' for speed
+            soup = BeautifulSoup(raw_html, 'lxml')
 
             # Look for the 'stat' table you mentioned
             table = soup.find("table", class_="stat")
             if not table:
-                return "Table 'stat' not found"
+                return ["Table 'stat' not found"], "null"
 
             # Search rows for 'Tooltip'
-            out_tooltip = "null"
+            out_tooltip = []
             out_rarity = "null"
             for row in table.find_all("tr"):
-                header = row.find(["th", "td"], class_="label") # Sometimes it's a class
-                if not header: header = row.find("th") # Fallback to standard <th>
+                header = row.find(["th", "td"], class_="label")
+                if not header:
+                    header = row.find("th")
 
-                # ... inside the row loop ...
-                if header and "tooltip" == header.text.lower():
-                    value_cell = row.find("td")
-                    if value_cell:
-                        # 1. Process line breaks
-                        for br in value_cell.find_all("br"):
-                            br.replace_with(". ")
-
-                        out_tooltip = value_cell.get_text().replace("  ", " ")
-                        continue
-
-                    out_tooltip = "null"
+                if row.get("class") and "buff" in row.get("class"):
+                    continue
 
                 if header and "rarity" == header.text.lower():
                     value_cell = row.find("td")
@@ -131,6 +122,21 @@ def get_info_via_api(page_title):
 
                     out_rarity = "null"
 
+                if header and header.text.lower() in ["type", "rarity", "sell", "research", "buy / sell", "buy"]:
+                    continue
+
+                if header:
+                    value_cell = row.find("td")
+                    if value_cell:
+                        for br in value_cell.find_all("br"):
+                            br.replace_with(". ")
+                        if header.text.lower() == "tooltip":
+                            out_tooltip.append("")
+                            out_tooltip.append(f"{value_cell.get_text()}")
+                        else:
+                            out_tooltip.append(f"{header.text.title()}: {value_cell.get_text()}")
+                        continue
+
             return out_tooltip, out_rarity
 
         elif response.status_code == 429:
@@ -138,23 +144,24 @@ def get_info_via_api(page_title):
             print(f"Rate limited on '{page_title}'. Waiting {wait_time}s...")
             time.sleep(wait_time)
         else:
-            return f"Error: {response.status_code}"
+            return [f"Error: {response.status_code}"], "null"
 
-    return "Failed after multiple retries"
+    return ["Failed after multiple retries"], "null"
 
 # --- EXECUTION ---
 titles = get_category_members(CATEGORY_NAME)
 print(f"Found {len(titles)} items. Starting extraction...")
 
 results = []
-limit = -13
+limit = -1
 try:
     for title in titles:
-        if "Category:" in title:
-            continue
         limit += 1
         if limit <= 0:
             continue
+        if "Category:" in title:
+            continue
+
         print(f"Fetching: {title}")
         result = {}
         result["name"] = title
@@ -163,8 +170,8 @@ try:
         result["difficulty"] = "Normal"
         result["bosses"] = []
         result["filters"] = []
-        result["class"] = "Classless"
-        result["type"] = "Accessory"
+        result["class"] = "Rogue"
+        result["type"] = "Weapon"
         result["format"] = "calamitymod"
         results.append(result)
         time.sleep(1)  # A polite 1-second gap
@@ -174,7 +181,7 @@ except Exception as e:
     print(f"Error: {e}")
 
 # Final Summary
-with open("../raw/calamity_accessories.json", "w+") as f:
+with open("../raw/calamity_weapons_rogue.json", "w+") as f:
     f.write(json.dumps(results))
 # print("\n" + "="*30)
 # for item in results:

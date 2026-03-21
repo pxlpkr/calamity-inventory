@@ -1,10 +1,10 @@
-let difficulties = ["Normal", "Expert", "Revengeance"]
+let difficulties = ["Normal", "Expert", "Revengeance", "Death"]
 let selectedDifficulty = "Revengeance";
 
 let classes = ["Classless", "Melee", "Ranger", "Mage", "Summoner", "Rogue"];
 let selectedClasses = [];
 
-let filters = ["Offensive", "Defensive", "Mobility", "Utility", "Fishing", "Mining", "Abyss"];
+let filters = ["Offensive", "Defensive", "Mobility", "Utility", "Fishing", "Mining", "Abyss", "Informational", "Building"];
 let selectedFilters = [];
 
 let itemTypes = ["Weapon", "Accessory", "Armor"];
@@ -12,6 +12,7 @@ let selectedItemTypes = [];
 
 let searchContent = "";
 
+let DEBUG_ONLY_NEW = false;
 let DEBUG = true;
 let EDITING = false;
 let editTarget;
@@ -47,9 +48,9 @@ let progression = [
     ["Queen Bee", "Skeletron", "Deerclops"],
     ["The Slime God"],
     ["Wall of Flesh"],
-    ["Queen Slime", "Cryogen", "Aquatic Scourge", "The Twins", "The Destroyer", "Skeletron Prime", "Brimstone Elemental"],
+    ["Queen Slime", "Cryogen", "The Twins", "Aquatic Scourge", "The Destroyer", "Brimstone Elemental", "Skeletron Prime"],
     ["Calamitas Clone", "Plantera"],
-    ["Leviathan and Anahita", "Golem", "Astrum Aureus", "Duke Fishron"],
+    ["Leviathan and Anahita", "Astrum Aureus", "Golem", "Duke Fishron"],
     ["Plaguebringer Goliath", "Empress of Light", "Ravager", "Lunatic Cultist"],
     ["Astrum Deus", "Moon Lord"],
     ["Profaned Guardians", "Dragonfolly"],
@@ -57,10 +58,12 @@ let progression = [
     ["Ceaseless Void", "Storm Weaver", "Signus", "Polterghast", "Old Duke"],
     ["Devourer of Gods"],
     ["Yharon"],
-    ["Supreme Calamitas", "Exo Mechs"]
+    ["Exo Mechs", "Supreme Calamitas"]
 ];
 let selectedBosses = [];
 let progressionTier = 0;
+let furthestBoss = "";
+let lastSelectedBoss = "";
 
 function getDiffId(diff) {
     return difficulties.indexOf(diff);
@@ -89,13 +92,40 @@ function getBossTier(boss) {
     }
 }
 
+function getBossSubtier(boss) {
+    for (let i = 0; i < progression.length; i++) {
+        if (progression[i].includes(boss)) {
+            return progression[i].indexOf(boss);
+        }
+    }
+
+    let overrides = {
+        "Any Boss": 1,
+        "Evil Boss 1": 2,
+        "Evil Boss 2": 2,
+        "Mech 1": 2,
+        "Mech 2": 4,
+        "Mech 3": 6
+    };
+
+    if (Object.keys(overrides).includes(boss)) {
+        return overrides[boss];
+    } else {
+        return -1;
+    }
+}
+
 function renderItems() {
     let cols = document.getElementsByClassName("item-col");
-    
+
     for (const col of cols) {
         col.innerHTML = '';
     }
-    
+
+    let mechCount = selectedBosses.filter(m => (["The Twins", "The Destroyer", "Skeletron Prime"].includes(m))).length;
+
+    let valid_item_count = 0;
+    // let firstItemBossTier = null;
     outer: for (const item of items) {
         if (getDiffId(item["difficulty"]) > getDiffId(selectedDifficulty)) {
             continue;
@@ -104,14 +134,21 @@ function renderItems() {
         } else if (selectedItemTypes.length !== 0 && !selectedItemTypes.includes(item["type"])) {
             continue;
         }
-        
-        if (!item["name"].toLowerCase().includes(searchContent.toLowerCase())) {
-            continue;
-        }
-        
+
         for (const filter of selectedFilters) {
             if (!item["filters"].includes(filter)) {
                 continue outer;
+            }
+        }
+
+        if (!item["name"].toLowerCase().includes(searchContent.toLowerCase()) &&
+            !item["description"].join(" ").toLowerCase().includes(searchContent.toLowerCase())) {
+            continue;
+        }
+
+        if (DEBUG_ONLY_NEW) {
+            if (item["filters"].length !== 0) {
+                continue;
             }
         }
 
@@ -123,8 +160,6 @@ function renderItems() {
                 continue;
             }
             if (!selectedBosses.includes(boss)) {
-                let mechCount = selectedBosses.filter(m => (["The Twins", "The Destroyer", "Skeletron Prime"].includes(m))).length;
-                
                 if (
                     !(boss === "Any Boss" && selectedBosses.length > 0) &&
                     !(boss === "Evil Boss 1" && progressionTier === 1) &&
@@ -137,16 +172,26 @@ function renderItems() {
                 }
             }
         }
-        
+
+        valid_item_count += 1;
+        if (valid_item_count >= 300) {
+            continue
+        }
+
+        // if (firstItemBossTier === null) {
+        //     firstItemBossTier = getBossTier(item["bosses"][0]);
+        // }
+
         let destination = cols[0];
         for (const col of cols) {
-            if (col.childElementCount < destination.childElementCount) {
+            if (col.offsetHeight < destination.offsetHeight) {
                 destination = col;
             }
         }
-        
+
         let redirectWrapper = document.createElement("a");
-        redirectWrapper.href = `https://calamitymod.wiki.gg/wiki/${item["name"].replaceAll(" ", "_")}`;
+        redirectWrapper.href = `https://${item["format"]}.wiki.gg/wiki/${item["name"].replaceAll(" ", "_")}`;
+        redirectWrapper.target = "_blank";
         let element = document.createElement("div");
         element.classList.add("item");
         if (item["filters"].length === 0) {
@@ -158,18 +203,38 @@ function renderItems() {
         element.appendChild(name);
         let icon = document.createElement("div");
         icon.classList.add("item-icon");
+        icon.classList.add(`item-${item["format"]}`);
         let iconInner = document.createElement("div");
-        iconInner.style.backgroundImage = `url("https://calamitymod.wiki.gg/images/${item["name"].replaceAll(" ", "_")}.png")`;
+        iconInner.style.backgroundImage = `url("https://${item["format"]}.wiki.gg/images/${item["name"].replaceAll(" ", "_").replaceAll(":", "")}.png")`;
         iconInner.classList.add("item-icon-internal");
         icon.appendChild(iconInner);
         element.appendChild(icon);
-        let desc = document.createElement("div");
+        let desc = document.createElement("p");
         desc.classList.add("item-description");
-        desc.textContent = item["description"];
+        for (let i = 0; i < item["description"].length; i++) {
+            const descItem = item["description"][i];
+            desc.append(descItem);
+            if (i !== item["description"].length - 1) {
+                desc.appendChild(document.createElement("br"));
+            }
+        }
+        // if (getBossTier(item["bosses"][0]) === getBossTier(furthestBoss)) {
+        if (item["bosses"].includes(lastSelectedBoss) ||
+            item["bosses"].includes("Any Boss") && selectedBosses.length === 1 ||
+            item["bosses"].includes("Evil Boss 1") && getBossTier(lastSelectedBoss) === 1 ||
+            item["bosses"].includes("Evil Boss 2") && getBossTier(lastSelectedBoss) === 2 ||
+            item["bosses"].includes("Mech 1") && mechCount === 1 && ["The Twins", "The Destroyer", "Skeletron Prime"].includes(lastSelectedBoss) ||
+            item["bosses"].includes("Mech 2") && mechCount === 2 && ["The Twins", "The Destroyer", "Skeletron Prime"].includes(lastSelectedBoss) ||
+            item["bosses"].includes("Mech 3") && mechCount === 3 && ["The Twins", "The Destroyer", "Skeletron Prime"].includes(lastSelectedBoss)) {
+            let newPing = document.createElement("div");
+            newPing.classList.add("new-indicator");
+            newPing.textContent = "New!";
+            element.appendChild(newPing);
+        }
         element.appendChild(desc);
         redirectWrapper.appendChild(element);
         destination.appendChild(redirectWrapper);
-        
+
         if (DEBUG) {
             redirectWrapper.addEventListener("contextmenu", e => {
                 e.preventDefault();
@@ -192,6 +257,18 @@ function renderItems() {
                 }
             });
         }
+    }
+
+    if (valid_item_count !== 1) {
+        document.getElementById("result-count").textContent = `${valid_item_count} Results`;
+        if (valid_item_count > 300) {
+            let disclaimer = document.createElement("text");
+            disclaimer.classList.add("gray-text");
+            disclaimer.textContent = " (Showing first 300)";
+            document.getElementById("result-count").appendChild(disclaimer);
+        }
+    } else {
+        document.getElementById("result-count").textContent = `${valid_item_count} Result`;
     }
 }
 
@@ -293,7 +370,6 @@ function updateAllowedBossGroups() {
 }
 
 function registerBossProgression() {
-    
     let select = document.getElementById("boss-progression");
     
     for (const bossGroup of progression) {
@@ -314,9 +390,21 @@ function registerBossProgression() {
                     if (selectedBosses.indexOf(boss) !== -1) {
                         selectedBosses.splice(selectedBosses.indexOf(boss), 1);
                     }
+                    lastSelectedBoss = "";
                 } else {
+                    lastSelectedBoss = boss;
                     selectedBosses.push(boss);
                 }
+                
+                furthestBoss = "";
+                for (const boss of selectedBosses) {
+                    if (getBossTier(boss) > getBossTier(furthestBoss) ||
+                        (getBossTier(boss) === getBossTier(furthestBoss)
+                            && getBossSubtier(boss) > getBossSubtier(furthestBoss))) {
+                        furthestBoss = boss;
+                    }
+                }
+                
                 updateAllowedBossGroups();
                 renderItems();
             });
@@ -370,6 +458,14 @@ function renderEditingDisplay() {
     });
     dl_button.textContent = "Download";
     select.append(dl_button);
+    select.append(document.createElement("br"));
+    let filt_button = document.createElement("button");
+    filt_button.addEventListener("click", () => {
+        DEBUG_ONLY_NEW = !DEBUG_ONLY_NEW;
+        renderItems();
+    });
+    filt_button.textContent = "Filter New";
+    select.append(filt_button);
     select.append(document.createElement("br"));
     select.append(`SPECIAL FLAGS: vvvv`);
     select.append(document.createElement("br"));
@@ -438,13 +534,36 @@ function registerItems() {
         if (getBossTier(a["bosses"][0]) < getBossTier(b["bosses"][0])) {
             return -1;
         }
+        
+        let subtierA = -1;
+        for (const boss of a["bosses"]) {
+            let tier = getBossSubtier(boss);
+            if (tier > subtierA) {
+                subtierA = tier;
+            }
+        }
+
+        let subtierB = -1;
+        for (const boss of b["bosses"]) {
+            let tier = getBossSubtier(boss);
+            if (tier > subtierB) {
+                subtierB = tier;
+            }
+        }
+        
+        if (subtierA > subtierB) {
+            return 1;
+        }
+        if (subtierA < subtierB) {
+            return -1;
+        }
         if (rarities.indexOf(a["rarity"]) > rarities.indexOf(b["rarity"])) {
             return 1;
         }
         if (rarities.indexOf(a["rarity"]) < rarities.indexOf(b["rarity"])) {
             return -1;
         }
-        return 0;
+        return b["name"].localeCompare(a["name"]);
     });
     items.reverse();
 }
@@ -462,6 +581,7 @@ function registerSearch() {
         searchContent = document.getElementById("search").value;
         renderItems();
     });
+    searchContent = document.getElementById("search").value;
 }
 
 document.addEventListener("DOMContentLoaded", () => {
