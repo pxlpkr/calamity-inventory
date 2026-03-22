@@ -1,3 +1,8 @@
+// TODO
+// Class:
+// Filter: Weapon/subtype, Tool/subtype
+// Item Type: [MAKE SINGLE FILTER ONLY] Ammo, Potion(?), Tools
+
 let difficulties = ["Normal", "Expert", "Revengeance", "Death"]
 let selectedDifficulty = "Revengeance";
 
