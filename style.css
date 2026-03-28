@@ -88,7 +88,7 @@ body {
 
 .difficulty-item {
     cursor: pointer;
-    width: 20%;
+    width: 25%;
     padding: 0;
     margin: 4px;
     aspect-ratio: 1;
@@ -337,4 +337,28 @@ a {
 
 .item-star {
     border: yellow 2px solid;
+}
+
+.stat-box {
+    width: 80%;
+    background: var(--theme-background);
+    margin: 10px auto 0;
+    border-radius: 4px;
+    text-align: left;
+}
+
+.mini-stat {
+    /*width: fit-content;*/
+    /*display: inline;*/
+    /*margin: 4px;*/
+    text-wrap: nowrap;
+    padding-left: 6px;
+}
+
+.stat-box:not(:empty) {
+    padding: 4px 0 2px 0;
+}
+
+.no-bg {
+    background-color: transparent;
 }

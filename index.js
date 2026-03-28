@@ -3,22 +3,79 @@
 // Filter: Weapon/subtype, Tool/subtype
 // Item Type: [MAKE SINGLE FILTER ONLY] Ammo, Potion(?), Tools
 
-let difficulties = ["Normal", "Expert", "Revengeance", "Death"]
+let difficulties = ["Normal", "Expert", "Revengeance", "Master", "Death"]
 let selectedDifficulty = "Revengeance";
 
 let classes = ["Classless", "Melee", "Ranger", "Mage", "Summoner", "Rogue"];
 let selectedClasses = [];
 
-let filters = ["Offensive", "Defensive", "Mobility", "Utility", "Fishing", "Mining", "Abyss", "Informational", "Building"];
+let filters = [];
+let filter_groups = [
+    {
+        "types": ["Accessory"],
+        "classes": [],
+        "values": ["Offensive", "Defensive", "Mobility", "Wings", "Utility", "Fishing", "Mining", "Abyss", "Informational", "Building"],
+        "displayOnEdit": true
+    },
+    {
+        "types": ["Weapon"],
+        "classes": ["Melee"],
+        "values": ["Sword", "Flail", "Spear", "Projectile Sword", "Boomerang"],
+        "displayOnEdit": false
+    },
+    {
+        "types": ["Weapon"],
+        "classes": ["Mage"],
+        "values": ["Magic Gun", "Tome", "Wand"],
+        "displayOnEdit": false
+    },
+    {
+        "types": ["Weapon"],
+        "classes": ["Ranger"],
+        "values": ["Bow", "Flamethrower", "Gun", "Launcher", "Dartgun"],
+        "displayOnEdit": false
+    },
+    {
+        "types": ["Weapon"],
+        "classes": ["Rogue"],
+        "values": ["Bomb", "Boomerang", "Dagger", "Javelin", "Spiky Ball"],
+        "displayOnEdit": false
+    },
+    {
+        "types": ["Weapon"],
+        "classes": ["Summoner"],
+        "values": ["Minion", "Sentry", "Whip"],
+        "displayOnEdit": false
+    },
+    {
+        "types": ["Tool"],
+        "classes": [],
+        "values": ["Pickaxe", "Axe", "Hammer"],
+        "displayOnEdit": false
+    },
+    {
+        "types": ["Ammo"],
+        "classes": [],
+        "values": ["Arrow", "Bullet", "Rocket", "Dart", "Sand"],
+        "displayOnEdit": false
+    },
+    {
+        "types": ["Armor"],
+        "classes": [],
+        "values": ["Helmet", "Chestplate", "Greaves"],
+        "displayOnEdit": false
+    }
+];
 let selectedFilters = [];
 
-let itemTypes = ["Weapon", "Accessory", "Armor"];
+let itemTypes = ["Weapon", "Accessory", "Armor", "Tool", "Ammo"];
 let selectedItemTypes = [];
 
 let searchContent = "";
+let showUnknown = true;
 
 let DEBUG_ONLY_NEW = false;
-let DEBUG = false;
+let DEBUG = true;
 let EDITING = false;
 let editTarget;
 
@@ -36,15 +93,90 @@ let rarities = [
     "Cyan",
     "Red",
     "Purple",
-    "Turquoise",
-    "Pure Green",
-    "Dark Blue",
     "Violet",
+    "",
+    "Dark Blue",
+    "",
     "Hot Pink",
-    "Calamity Red",
-    "Rainbow",
-    "Fiery Red",
+    "Pure Green",
+    "Turquoise",
+    "",
+    "",
 ]
+
+function getToolTimeString(toolTime) {
+    if (toolTime <= 3) {
+        return "Very Fast";
+    } else if (toolTime <= 6) {
+        return "Fast";
+    } else if (toolTime <= 9) {
+        return "Average";
+    } else if (toolTime <= 12) {
+        return "Slow";
+    } else {
+        return "Very Slow";
+    }
+}
+
+function getKnockbackString(kb) {
+    if (kb > 11) {
+        return "Insane Knockback";
+    } else if (kb > 9) {
+        return "Extremely Strong Knockback";
+    } else if (kb > 7) {
+        return "Very Strong Knockback";
+    } else if (kb > 6) {
+        return "Strong Knockback";
+    } else if (kb > 4) {
+        return "Average Knockback";
+    } else if (kb > 3) {
+        return "Weak Knockback";
+    } else if (kb > 1.5) {
+        return "Very Weak Knockback";
+    } else if (kb > 0) {
+        return "Extremely Weak Knockback";
+    } else {
+        return "No Knockback";
+    }
+}
+
+function getCooldownString(cd) {
+    if (cd <= 8) {
+        return "Insanely Fast Speed";
+    } else if (cd <= 20) {
+        return "Very Fast Speed";
+    } else if (cd <= 25) {
+        return "Fast Speed";
+    } else if (cd <= 30) {
+        return "Average Speed";
+    } else if (cd <= 35) {
+        return "Slow Speed";
+    } else if (cd <= 45) {
+        return "Very Slow Speed";
+    } else if (cd <= 55) {
+        return "Extremely Slow Speed";
+    } else {
+        return "Snail Speed";
+    }
+}
+
+function getSortableRarityID(rarityID) {
+    if (rarityID <= 11) {
+        return rarityID;
+    } else if (rarityID === 12) {
+        return 15;
+    } else if (rarityID === 14) {
+        return 14;
+    } else if (rarityID === 16) {
+        return 16;
+    } else if (rarityID === 17) {
+        return 13;
+    } else if (rarityID === 18) {
+        return 12;
+    } else {
+        return 99;
+    }
+}
 
 let progression = [
     ["King Slime", "Desert Scourge", "Eye of Cthulhu", "Crabulon"],
@@ -69,6 +201,71 @@ let selectedBosses = [];
 let progressionTier = 0;
 let furthestBoss = "";
 let lastSelectedBoss = "";
+
+function getClassFromDamageType(damageType) {
+    switch (damageType) {
+        case "MeleeDamageClass":
+        case "MeleeNoSpeedDamageClass":
+        case "TrueMeleeDamageClass":
+        case "TrueMeleeNoSpeedDamageClass":
+            return ["Melee"];
+        case "RangedDamageClass":
+            return ["Ranger"];
+        case "MagicDamageClass":
+            return ["Mage"];
+        case "SummonDamageClass":
+        case "SummonMeleeSpeedDamageClass":
+            return ["Summoner"];
+        case "RogueDamageClass":
+        case "StealthDamageClass":
+            return ["Rogue"];
+        case "MeleeRangedHybridDamageClass":
+            return ["Ranger", "Melee"];
+        default:
+            return ["Classless"];
+    }
+}
+
+function getDamageTypeFromClass(className) {
+    switch (className) {
+        case "Melee":
+            return "MeleeDamageClass"
+        case "Ranger":
+            return "RangedDamageClass";
+        case "Mage":
+            return "MagicDamageClass";
+        case "Summoner":
+            return "SummonDamageClass";
+        case "Rogue":
+            return "RogueDamageClass";
+        default:
+            return "DefaultDamageClass";
+    }
+}
+
+function getFancyDamageFromDamageType(damageType) {
+    switch (damageType) {
+        case "MeleeDamageClass":
+        case "MeleeNoSpeedDamageClass":
+        case "TrueMeleeDamageClass":
+        case "TrueMeleeNoSpeedDamageClass":
+            return "Melee ";
+        case "RangedDamageClass":
+            return "Ranged ";
+        case "MagicDamageClass":
+            return "Magic ";
+        case "SummonDamageClass":
+        case "SummonMeleeSpeedDamageClass":
+            return "Summon ";
+        case "RogueDamageClass":
+        case "StealthDamageClass":
+            return "Rogue ";
+        case "MeleeRangedHybridDamageClass":
+            return "Ranged/Melee ";
+        default:
+            return "";
+    }
+}
 
 function getDiffId(diff) {
     return difficulties.indexOf(diff);
@@ -120,6 +317,13 @@ function getBossSubtier(boss) {
     }
 }
 
+function addMiniStat(parent, str) {
+    let elem = document.createElement("div");
+    elem.innerText = str;
+    elem.classList.add("mini-stat");
+    parent.appendChild(elem);
+}
+
 function renderItems() {
     let cols = document.getElementsByClassName("item-col");
 
@@ -132,32 +336,58 @@ function renderItems() {
     let valid_item_count = 0;
     // let firstItemBossTier = null;
     outer: for (const item of items) {
-        if (getDiffId(item["difficulty"]) > getDiffId(selectedDifficulty)) {
-            continue;
-        } else if (selectedClasses.length !== 0 && !selectedClasses.includes(item["class"])) {
-            continue;
-        } else if (selectedItemTypes.length !== 0 && !selectedItemTypes.includes(item["type"])) {
+        if (getDiffId(item["Difficulty"]) > getDiffId(selectedDifficulty)) {
             continue;
         }
-
-        for (const filter of selectedFilters) {
-            if (!item["filters"].includes(filter)) {
+        
+        if (showUnknown && item["Stat"]["IsKnown"]) {
+            continue;
+        }
+        
+        if (item["Name"] === "$IGNORE" || item["Metadata"]["DeletionTarget"]) {
+            continue;
+        }
+        
+        if (selectedClasses.length > 0) {
+            let found = false;
+            classCheck: for (const cls of item["Classes"]) {
+                let prettyClass = getClassFromDamageType(cls);
+                for (const pcls of prettyClass) {
+                    if (selectedClasses.includes(pcls)) {
+                        found = true;
+                        break classCheck;
+                    }
+                }
+            }
+            if (!found) {
+                continue;
+            }
+        }
+        
+        for (const cls of selectedItemTypes) {
+            if (!item["Flags"].includes(cls)) {
                 continue outer;
             }
         }
 
-        if (!item["name"].toLowerCase().includes(searchContent.toLowerCase()) &&
-            !item["description"].join(" ").toLowerCase().includes(searchContent.toLowerCase())) {
+        for (const cls of selectedFilters) {
+            if (!item["Flags"].includes(cls)) {
+                continue outer;
+            }
+        }
+
+        if (!item["Name"].toLowerCase().includes(searchContent.toLowerCase()) &&
+            !item["Description"].join(" ").toLowerCase().includes(searchContent.toLowerCase())) {
             continue;
         }
 
         if (DEBUG_ONLY_NEW) {
-            if (item["filters"].length !== 0) {
+            if (item["Flags"].length !== 0) {
                 continue;
             }
         }
 
-        for (const boss of item["bosses"]) {
+        for (const boss of item["Bosses"]) {
             if (progressionTier < getBossTier(boss)) {
                 continue outer;
             }
@@ -184,7 +414,7 @@ function renderItems() {
         }
 
         // if (firstItemBossTier === null) {
-        //     firstItemBossTier = getBossTier(item["bosses"][0]);
+        //     firstItemBossTier = getBossTier(item["Bosses"][0]);
         // }
 
         let destination = cols[0];
@@ -195,48 +425,99 @@ function renderItems() {
         }
 
         let redirectWrapper = document.createElement("a");
-        redirectWrapper.href = `https://${item["format"]}.wiki.gg/wiki/${item["name"].replaceAll(" ", "_")}`;
+        redirectWrapper.href = `https://${item["Mod"].toLowerCase()}.wiki.gg/wiki/${item["Name"].replaceAll(" ", "_")}`;
         redirectWrapper.target = "_blank";
         let element = document.createElement("div");
         element.classList.add("item");
-        if (item["filters"].length === 0) {
+        if (item["Flags"].length === 0) {
             element.classList.add("item-needs-manual");
         }
         let name = document.createElement("div");
-        name.classList.add("item-name", "rarity-" + item["rarity"].toLowerCase().replaceAll(" ", "-"));
-        name.textContent = item["name"];
+        let tgtRarity = rarities[item["Rarity"] + 1].toLowerCase().replaceAll(" ", "-");
+        if (getDiffId(item["Difficulty"]) >= getDiffId("Master")) {
+            tgtRarity = "fiery-red";
+        } else if (getDiffId(item["Difficulty"]) >= getDiffId("Expert")) {
+            tgtRarity = "rainbow";
+        }
+        name.classList.add("item-name", "rarity-" + tgtRarity);
+        if (item.hasOwnProperty("NameOverride") && item["NameOverride"] !== undefined) {
+            name.textContent = item["NameOverride"];
+        } else {
+            name.textContent = item["Name"];
+        }
         element.appendChild(name);
         let icon = document.createElement("div");
         icon.classList.add("item-icon");
-        icon.classList.add(`item-${item["format"]}`);
+        icon.classList.add(`item-${item["Mod"].toLowerCase()}`);
         let iconInner = document.createElement("div");
-        iconInner.style.backgroundImage = `url("https://${item["format"]}.wiki.gg/images/${item["name"].replaceAll(" ", "_").replaceAll(":", "")}.png")`;
+        iconInner.style.backgroundImage = `url("https://${item["Mod"].toLowerCase()}.wiki.gg/images/${item["Name"].replaceAll(" ", "_").replaceAll(":", "")}.png")`;
         iconInner.classList.add("item-icon-internal");
         icon.appendChild(iconInner);
         element.appendChild(icon);
+        let statBox = document.createElement("div");
+        statBox.classList.add("stat-box");
+        if (item["Flags"].includes("Tool")) {
+            addMiniStat(statBox, `${getToolTimeString(item["Stat"]["useTime"])} Mining Speed`);
+            if (item["Stat"]["pickPower"] > 0) {
+                addMiniStat(statBox, `${item["Stat"]["pickPower"]}% Pickaxe Power`);
+            }
+            if (item["Stat"]["axePower"] > 0) {
+                addMiniStat(statBox, `${item["Stat"]["axePower"]}% Axe Power`);
+            }
+            if (item["Stat"]["hammerPower"] > 0) {
+                addMiniStat(statBox, `${item["Stat"]["hammerPower"]}% Hammer Power`);
+            }
+            if (item["Stat"]["tileBoost"] !== 0) {
+                addMiniStat(statBox, `+${item["Stat"]["tileBoost"]} Range`);
+            }
+        }
+        
+        if (item["Flags"].includes("Ammo") && !item["Flags"].includes("AmmoNoRender")) {
+            addMiniStat(statBox, `${item["Stat"]["damage"]} Ranged Damage`);
+            addMiniStat(statBox, `${getKnockbackString(item["Stat"]["knockback"])}`);
+        }
+        if (item["Flags"].includes("Weapon")) {
+            addMiniStat(statBox, `${item["Stat"]["damage"]} ${getFancyDamageFromDamageType(item["Classes"][0])}Damage`);
+            addMiniStat(statBox, `${item["Stat"]["crit"]+4}% Critical Chance`);
+            addMiniStat(statBox, `${getKnockbackString(item["Stat"]["knockback"])}`);
+            addMiniStat(statBox, `${getCooldownString(item["Stat"]["cooldown"])}`);
+        }
+        if (item["Flags"].includes("Armor")) {
+            addMiniStat(statBox, `${item["Stat"]["defense"]} Defense`);
+        }
+        if (item["Flags"].includes("Accessory")) {
+            if (item["Stat"]["defense"] !== 0) {
+                addMiniStat(statBox, `${item["Stat"]["defense"]} Defense`);
+            }
+        }
+        element.appendChild(statBox);
+        let descStatBox = document.createElement("div");
+        descStatBox.classList.add("stat-box");
+        descStatBox.classList.add("no-bg");
         let desc = document.createElement("p");
         desc.classList.add("item-description");
-        for (let i = 0; i < item["description"].length; i++) {
-            const descItem = item["description"][i];
+        for (let i = 0; i < item["Description"].length; i++) {
+            const descItem = item["Description"][i];
             desc.append(descItem);
-            if (i !== item["description"].length - 1) {
+            if (i !== item["Description"].length - 1) {
                 desc.appendChild(document.createElement("br"));
             }
         }
-        // if (getBossTier(item["bosses"][0]) === getBossTier(furthestBoss)) {
-        if (item["bosses"].includes(lastSelectedBoss) ||
-            item["bosses"].includes("Any Boss") && selectedBosses.length === 1 ||
-            item["bosses"].includes("Evil Boss 1") && getBossTier(lastSelectedBoss) === 1 ||
-            item["bosses"].includes("Evil Boss 2") && getBossTier(lastSelectedBoss) === 2 ||
-            item["bosses"].includes("Mech 1") && mechCount === 1 && ["The Twins", "The Destroyer", "Skeletron Prime"].includes(lastSelectedBoss) ||
-            item["bosses"].includes("Mech 2") && mechCount === 2 && ["The Twins", "The Destroyer", "Skeletron Prime"].includes(lastSelectedBoss) ||
-            item["bosses"].includes("Mech 3") && mechCount === 3 && ["The Twins", "The Destroyer", "Skeletron Prime"].includes(lastSelectedBoss)) {
+        descStatBox.appendChild(desc);
+        // if (getBossTier(item["Bosses"][0]) === getBossTier(furthestBoss)) {
+        if (item["Bosses"].includes(lastSelectedBoss) ||
+            item["Bosses"].includes("Any Boss") && selectedBosses.length === 1 ||
+            item["Bosses"].includes("Evil Boss 1") && getBossTier(lastSelectedBoss) === 1 ||
+            item["Bosses"].includes("Evil Boss 2") && getBossTier(lastSelectedBoss) === 2 ||
+            item["Bosses"].includes("Mech 1") && mechCount === 1 && ["The Twins", "The Destroyer", "Skeletron Prime"].includes(lastSelectedBoss) ||
+            item["Bosses"].includes("Mech 2") && mechCount === 2 && ["The Twins", "The Destroyer", "Skeletron Prime"].includes(lastSelectedBoss) ||
+            item["Bosses"].includes("Mech 3") && mechCount === 3 && ["The Twins", "The Destroyer", "Skeletron Prime"].includes(lastSelectedBoss)) {
             let newPing = document.createElement("div");
             newPing.classList.add("new-indicator");
             newPing.textContent = "New!";
             element.appendChild(newPing);
         }
-        element.appendChild(desc);
+        element.appendChild(descStatBox);
         redirectWrapper.appendChild(element);
         destination.appendChild(redirectWrapper);
 
@@ -251,12 +532,14 @@ function renderItems() {
                     EDITING = true;
                     editTarget = item;
                     renderEditingDisplay();
+                    renderFilters();
                     updateAllowedBossGroups();
                 } else {
                     document.getElementById("sidebar-left").classList.remove("item-editing");
                     document.getElementById("sidebar-right").classList.remove("item-editing");
                     element.classList.remove("item-editing");
                     EDITING = false;
+                    renderFilters();
                     updateAllowedBossGroups();
                     document.getElementById("editing-container").innerHTML = '';
                 }
@@ -277,25 +560,69 @@ function renderItems() {
     }
 }
 
-function registerGeneric(source, destination, latch, editKey, targetArray) {
+function renderFilters() {
+    let select = document.getElementById("filter-filter");
+    select.innerHTML = "";
+    selectedFilters = [];
+    outer: for (const elem of filter_groups) {
+        if (!EDITING || (EDITING && !elem["displayOnEdit"])) {
+            for (const t of elem["types"]) {
+                if (!selectedItemTypes.includes(t)) {
+                    continue outer
+                }
+            }
+            for (const t of elem["classes"]) {
+                if (!selectedClasses.includes(t)) {
+                    continue outer
+                }
+            }
+        }
+        
+        for (const item of elem["values"]) {
+            let element = document.createElement("button");
+            element.classList.add("filter-option")
+            element.textContent = item;
+            element.addEventListener("click", () => {
+                if (EDITING) {
+                    toggleListItem(editTarget["Metadata"]["Flags"], item);
+                    renderEditingDisplay();
+                    return
+                }
+                if (selectedFilters.includes(item)) {
+                    if (selectedFilters.indexOf(item) !== -1) {
+                        selectedFilters.splice(selectedFilters.indexOf(item), 1);
+                    }
+                    element.classList.remove("toggle-green");
+                } else {
+                    selectedFilters.push(item);
+                    element.classList.add("toggle-green");
+                }
+                renderItems();
+            });
+            select.appendChild(element);
+        }
+    }
+}
+
+function registerGeneric(source, destination, latch, editKey, convertToDamageType) {
     let select = document.getElementById(latch);
+    select.innerHTML = "";
     for (const item of source) {
         let element = document.createElement("button");
         element.classList.add("filter-option")
         element.textContent = item;
         element.addEventListener("click", () => {
             if (EDITING) {
-                if (targetArray) {
-                    if (editTarget[editKey].includes(item)) {
-                        editTarget[editKey].splice(editTarget[editKey].indexOf(item), 1);
-                    } else {
-                        editTarget[editKey].push(item);
+                if (editKey !== null) {
+                    console.log(editTarget["Metadata"]);
+                    let kv = item;
+                    if (convertToDamageType) {
+                        kv = getDamageTypeFromClass(item);
                     }
-                } else {
-                    editTarget[editKey] = item;
+                    toggleListItem(editTarget["Metadata"][editKey], kv);
+                    renderEditingDisplay();
                 }
-                renderEditingDisplay();
-                return
+                return;
             }
             if (destination.includes(item)) {
                 if (destination.indexOf(item) !== -1) {
@@ -306,6 +633,7 @@ function registerGeneric(source, destination, latch, editKey, targetArray) {
                 destination.push(item);
                 element.classList.add("toggle-green");
             }
+            renderFilters();
             renderItems();
         });
         select.appendChild(element);
@@ -332,7 +660,7 @@ function registerDifficulties() {
         button.innerText = diff;
         button.addEventListener("click", () => {
             if (EDITING) {
-                editTarget["difficulty"] = diff;
+                editTarget["Metadata"]["Difficulty"] = diff;
                 renderEditingDisplay();
                 return
             }
@@ -415,11 +743,7 @@ function registerBossProgression() {
             });
             item.addEventListener("mouseup", () => {
                 if (EDITING) {
-                    if (editTarget["bosses"].includes(boss)) {
-                        editTarget["bosses"].splice(editTarget["bosses"].indexOf(boss), 1);
-                    } else {
-                        editTarget["bosses"].push(boss);
-                    }
+                    toggleListItem(editTarget["Metadata"]["Bosses"], boss);
                     renderEditingDisplay();
                 } 
             });
@@ -434,19 +758,22 @@ function registerBossProgression() {
 function renderEditingDisplay() {
     let select = document.getElementById("editing-container");
     select.innerHTML = '';
-    select.append(`CLASS: ${editTarget["class"]}`);
+    select.append(`Bosses: ${editTarget["Metadata"]["Bosses"]}`);
     select.append(document.createElement("br"));
-    select.append(`FILTERS: ${editTarget["filters"]}`);
+    select.append(`NameOverride: ${editTarget["Metadata"]["NameOverride"]}`);
     select.append(document.createElement("br"));
-    select.append(`TYPE: ${editTarget["type"]}`);
+    select.append(`Flags: ${editTarget["Metadata"]["Flags"]}`);
     select.append(document.createElement("br"));
-    select.append(`BOSSES: ${editTarget["bosses"]}`);
-    select.append(document.createElement("br"));
-    select.append(`DIFFICULTY: ${editTarget["difficulty"]}`);
-    select.append(document.createElement("br"));
+    // select.append(`DIFFICULTY: ${editTarget["Difficulty"]}`);
+    // select.append(document.createElement("br"));
     let dl_button = document.createElement("button");
     dl_button.addEventListener("click", () => {
-        const jsonString = JSON.stringify(items, null);
+        let metaExport = [];
+        for (const item of items) {
+            metaExport.push(item["Metadata"]);
+        }
+        
+        const jsonString = JSON.stringify(metaExport, null);
         
         const blob = new Blob([jsonString], { type: 'application/json' });
         
@@ -461,57 +788,57 @@ function renderEditingDisplay() {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
     });
-    dl_button.textContent = "Download";
+    dl_button.textContent = "Download Metadata";
     select.append(dl_button);
     select.append(document.createElement("br"));
-    let filt_button = document.createElement("button");
-    filt_button.addEventListener("click", () => {
-        DEBUG_ONLY_NEW = !DEBUG_ONLY_NEW;
-        renderItems();
-    });
-    filt_button.textContent = "Filter New";
-    select.append(filt_button);
+    // let filt_button = document.createElement("button");
+    // filt_button.addEventListener("click", () => {
+    //     DEBUG_ONLY_NEW = !DEBUG_ONLY_NEW;
+    //     renderItems();
+    // });
+    // filt_button.textContent = "Filter New";
+    // select.append(filt_button);
     select.append(document.createElement("br"));
     select.append(`SPECIAL FLAGS: vvvv`);
     select.append(document.createElement("br"));
     let sf_1 = document.createElement("button");
     sf_1.addEventListener("click", () => {
-        toggleListItem(editTarget["bosses"], sf_1.textContent);
+        toggleListItem(editTarget["Metadata"]["Bosses"], sf_1.textContent);
         renderEditingDisplay();
     });
     sf_1.textContent = "Any Boss";
     select.append(sf_1);
     let sf_2 = document.createElement("button");
     sf_2.addEventListener("click", () => {
-        toggleListItem(editTarget["bosses"], sf_2.textContent);
+        toggleListItem(editTarget["Metadata"]["Bosses"], sf_2.textContent);
         renderEditingDisplay();
     });
     sf_2.textContent = "Evil Boss 1";
     select.append(sf_2);
     let sf_3 = document.createElement("button");
     sf_3.addEventListener("click", () => {
-        toggleListItem(editTarget["bosses"], sf_3.textContent);
+        toggleListItem(editTarget["Metadata"]["Bosses"], sf_3.textContent);
         renderEditingDisplay();
     });
     sf_3.textContent = "Evil Boss 2";
     select.append(sf_3);
     let sf_4 = document.createElement("button");
     sf_4.addEventListener("click", () => {
-        toggleListItem(editTarget["bosses"], sf_4.textContent);
+        toggleListItem(editTarget["Metadata"]["Bosses"], sf_4.textContent);
         renderEditingDisplay();
     });
     sf_4.textContent = "Mech 1";
     select.append(sf_4);
     let sf_5 = document.createElement("button");
     sf_5.addEventListener("click", () => {
-        toggleListItem(editTarget["bosses"], sf_5.textContent);
+        toggleListItem(editTarget["Metadata"]["Bosses"], sf_5.textContent);
         renderEditingDisplay();
     });
     sf_5.textContent = "Mech 2";
     select.append(sf_5);
     let sf_6 = document.createElement("button");
     sf_6.addEventListener("click", () => {
-        toggleListItem(editTarget["bosses"], sf_6.textContent);
+        toggleListItem(editTarget["Metadata"]["Bosses"], sf_6.textContent);
         renderEditingDisplay();
     });
     sf_6.textContent = "Mech 3";
@@ -519,29 +846,42 @@ function renderEditingDisplay() {
     let sf_7 = document.createElement("button");
     sf_7.style.background = "red";
     sf_7.addEventListener("click", () => {
-        toggleListItem(items, editTarget);
+        editTarget["Metadata"]["DeletionTarget"] = true;
     });
     sf_7.textContent = "DELETE";
     select.append(sf_7);
+    let sf_8 = document.createElement("input");
+    sf_8.placeholder = "enter new item name";
+    select.append(sf_8);
+    let sf_9 = document.createElement("button");
+    sf_9.addEventListener("click", () => {
+        editTarget["Metadata"]["NameOverride"] = sf_8.value;
+        editTarget["NameOverride"] = sf_8.value;
+        renderEditingDisplay();
+    });
+    sf_9.textContent = "Apply Name";
+    select.append(sf_9);
+    select.append(document.createElement("br"));
+    select.append(`RAW: ${JSON.stringify(editTarget["Metadata"])}`);
 }
 
 function registerItems() {
     items.sort((a, b) => {
-        if (b["bosses"].length === 0 && a["bosses"].length > b["bosses"].length) {
+        if (b["Bosses"].length === 0 && a["Bosses"].length > b["Bosses"].length) {
             return 1;
         }
-        if (a["bosses"].length === 0 && a["bosses"].length < b["bosses"].length) {
+        if (a["Bosses"].length === 0 && a["Bosses"].length < b["Bosses"].length) {
             return -1;
         }
-        if (getBossTier(a["bosses"][0]) > getBossTier(b["bosses"][0])) {
+        if (getBossTier(a["Bosses"][0]) > getBossTier(b["Bosses"][0])) {
             return 1;
         }
-        if (getBossTier(a["bosses"][0]) < getBossTier(b["bosses"][0])) {
+        if (getBossTier(a["Bosses"][0]) < getBossTier(b["Bosses"][0])) {
             return -1;
         }
         
         let subtierA = -1;
-        for (const boss of a["bosses"]) {
+        for (const boss of a["Bosses"]) {
             let tier = getBossSubtier(boss);
             if (tier > subtierA) {
                 subtierA = tier;
@@ -549,7 +889,7 @@ function registerItems() {
         }
 
         let subtierB = -1;
-        for (const boss of b["bosses"]) {
+        for (const boss of b["Bosses"]) {
             let tier = getBossSubtier(boss);
             if (tier > subtierB) {
                 subtierB = tier;
@@ -562,13 +902,13 @@ function registerItems() {
         if (subtierA < subtierB) {
             return -1;
         }
-        if (rarities.indexOf(a["rarity"]) > rarities.indexOf(b["rarity"])) {
+        if (getSortableRarityID(a["Rarity"]) > getSortableRarityID(b["Rarity"])) {
             return 1;
         }
-        if (rarities.indexOf(a["rarity"]) < rarities.indexOf(b["rarity"])) {
+        if (getSortableRarityID(a["Rarity"]) < getSortableRarityID(b["Rarity"])) {
             return -1;
         }
-        return b["name"].localeCompare(a["name"]);
+        return b["Name"].localeCompare(a["Name"]);
     });
     items.reverse();
 }
@@ -593,9 +933,9 @@ document.addEventListener("DOMContentLoaded", () => {
     registerSearch();
     registerDifficulties();
     registerBossProgression();
-    registerGeneric(classes, selectedClasses, "filter-class", "class", false);
-    registerGeneric(filters, selectedFilters, "filter-filter", "filters", true);
-    registerGeneric(itemTypes, selectedItemTypes, "filter-type", "type", false);
+    registerGeneric(classes, selectedClasses, "filter-class", "Classes", true);
+    registerGeneric(itemTypes, selectedItemTypes, "filter-type", "Flags", false);
+    renderFilters();
     registerItems();
     renderItems();
 });
